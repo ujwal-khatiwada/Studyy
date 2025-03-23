@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 10px;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>Study Tracker</h1>
+    <table id="studyTable">
+        <tr>
+            <th>Day</th>
+            <th>Subject</th>
+            <th>Topics to Cover</th>
+            <th>Completed</th>
+        </tr>
+    </table>
+    <h2>Total Day Studied: <span id="studyHours">0</span></h2>
+
+    <script>
+        const supabaseUrl = "https://vwknkbavlaextoqhupdz.supabase.co";
+        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a25rYmF2bGFleHRvcWh1cGR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2OTY2MjEsImV4cCI6MjA1ODI3MjYyMX0.epnSVClFFrvmYRyGEhRteILoiF5EwxB0oJRTfi1bRD4";
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function fetchStudyData() {
+            const { data, error } = await supabase.from("study_tracker").select("*");
+            if (error) {
+                console.error("Error fetching data:", error);
+                return;
+            }
+
+            let studyHours = 0;
+            const table = document.getElementById("studyTable");
+
+            data.forEach(item => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>Day ${item.day}</td>
+                    <td>${item.subject}</td>
+                    <td>${item.topics}</td>
+                    <td><input type="checkbox" ${item.completed ? "checked" : ""} onchange="updateCompletion(${item.id}, this)"></td>
+                `;
+                table.appendChild(row);
+                if (item.completed) studyHours++;
+            });
+
+            document.getElementById("studyHours").innerText = studyHours;
+        }
+
+        async function updateCompletion(id, checkbox) {
+            const { error } = await supabase
+                .from("study_tracker")
+                .update({ completed: checkbox.checked })
+                .eq("id", id);
+            
+            if (error) {
+                console.error("Error updating data:", error);
+                checkbox.checked = !checkbox.checked;  // Revert on failure
+            }
+
+            const checkedBoxes = document.querySelectorAll("input[type='checkbox']:checked").length;
+            document.getElementById("studyHours").innerText = checkedBoxes;
+        }
+
+        fetchStudyData();
+    </script>
+</body>
+</html>
