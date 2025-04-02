@@ -1,87 +1,85 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Tracker</title>
+    <title>Fitness + Study Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            text-align: center;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            border: 1px solid black;
-            padding: 10px;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+        h1, h2 { text-align: center; }
+        input, button { width: 100%; padding: 10px; margin: 5px 0; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f4f4f4; margin: 5px 0; padding: 10px; }
     </style>
 </head>
 <body>
-    <h1>Study Tracker</h1>
-    <table id="studyTable">
-        <tr>
-            <th>Day</th>
-            <th>Subject</th>
-            <th>Topics to Cover</th>
-            <th>Completed</th>
-        </tr>
-    </table>
-    <h2>Total Day Studied: <span id="studyHours">0</span></h2>
+    <h1>Fitness + Study Tracker</h1><h2>Study Logs</h2>
+<input type="text" id="studyInput" placeholder="Enter study subject">
+<input type="number" id="studyHours" placeholder="Hours studied">
+<button onclick="addStudyLog()">Add Study Log</button>
+<ul id="studyLogs"></ul>
 
-    <script>
-        const supabaseUrl = "https://vwknkbavlaextoqhupdz.supabase.co";
-        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a25rYmF2bGFleHRvcWh1cGR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2OTY2MjEsImV4cCI6MjA1ODI3MjYyMX0.epnSVClFFrvmYRyGEhRteILoiF5EwxB0oJRTfi1bRD4";
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+<h2>Workout Logs</h2>
+<input type="text" id="workoutInput" placeholder="Enter workout type">
+<input type="number" id="workoutDuration" placeholder="Duration (mins)">
+<button onclick="addWorkoutLog()">Add Workout Log</button>
+<ul id="workoutLogs"></ul>
 
-        async function fetchStudyData() {
-            const { data, error } = await supabase.from("study_tracker").select("*");
-            if (error) {
-                console.error("Error fetching data:", error);
-                return;
-            }
+<h2>Leaderboard</h2>
+<ul id="leaderboard"></ul>
 
-            let studyHours = 0;
-            const table = document.getElementById("studyTable");
+<script>
+    const supabaseUrl = "https://vwknkbavlaextoqhupdz.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3a25rYmF2bGFleHRvcWh1cGR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2OTY2MjEsImV4cCI6MjA1ODI3MjYyMX0.epnSVClFFrvmYRyGEhRteILoiF5EwxB0oJRTfi1bRD4";
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-            data.forEach(item => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>Day ${item.day}</td>
-                    <td>${item.subject}</td>
-                    <td>${item.topics}</td>
-                    <td><input type="checkbox" ${item.completed ? "checked" : ""} onchange="updateCompletion(${item.id}, this)"></td>
-                `;
-                table.appendChild(row);
-                if (item.completed) studyHours++;
-            });
+    async function fetchLogs() {
+        let { data: studyLogs } = await supabase.from("study_logs").select("*");
+        let { data: workoutLogs } = await supabase.from("workout_logs").select("*");
+        displayLogs(studyLogs, "studyLogs");
+        displayLogs(workoutLogs, "workoutLogs");
+    }
 
-            document.getElementById("studyHours").innerText = studyHours;
+    async function fetchLeaderboard() {
+        let { data: leaderboard } = await supabase.from("leaderboard").select("*", { order: "points", ascending: false });
+        displayLogs(leaderboard, "leaderboard");
+    }
+
+    async function addStudyLog() {
+        let studyInput = document.getElementById("studyInput").value;
+        let studyHours = document.getElementById("studyHours").value;
+        if (studyInput && studyHours) {
+            await supabase.from("study_logs").insert([{ subject: studyInput, hours_spent: parseInt(studyHours) }]);
+            document.getElementById("studyInput").value = "";
+            document.getElementById("studyHours").value = "";
+            fetchLogs();
         }
+    }
 
-        async function updateCompletion(id, checkbox) {
-            const { error } = await supabase
-                .from("study_tracker")
-                .update({ completed: checkbox.checked })
-                .eq("id", id);
-            
-            if (error) {
-                console.error("Error updating data:", error);
-                checkbox.checked = !checkbox.checked;  // Revert on failure
-            }
-
-            const checkedBoxes = document.querySelectorAll("input[type='checkbox']:checked").length;
-            document.getElementById("studyHours").innerText = checkedBoxes;
+    async function addWorkoutLog() {
+        let workoutInput = document.getElementById("workoutInput").value;
+        let workoutDuration = document.getElementById("workoutDuration").value;
+        if (workoutInput && workoutDuration) {
+            await supabase.from("workout_logs").insert([{ exercise: workoutInput, duration: parseInt(workoutDuration) }]);
+            document.getElementById("workoutInput").value = "";
+            document.getElementById("workoutDuration").value = "";
+            fetchLogs();
         }
+    }
 
-        fetchStudyData();
-    </script>
+    function displayLogs(logs, elementId) {
+        let list = document.getElementById(elementId);
+        list.innerHTML = "";
+        logs.forEach((log) => {
+            let li = document.createElement("li");
+            li.textContent = JSON.stringify(log);
+            list.appendChild(li);
+        });
+    }
+
+    fetchLogs();
+    fetchLeaderboard();
+</script>
+
 </body>
 </html>
